@@ -1052,7 +1052,7 @@
 	sound {
 		compatible = "nvidia,tegra-audio-wm8903-tf101",
 			     "nvidia,tegra-audio-wm8903";
-		nvidia,model = "ASUS EeePad Transformer TF101";
+		nvidia,model = "ASUS Transformer WM8903";
 
 		nvidia,audio-routing =
 			"Headphone Jack", "HPOUTR",
