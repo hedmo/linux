@@ -10,6 +10,18 @@
 	model = "Asus Transformer Prime TF201";
 	compatible = "asus,tf201", "nvidia,tegra30";
 
+	gpio@6000d000 {
+		tf201-lpm-hog {
+			gpio-hog;
+			gpios = <TEGRA_GPIO(U, 3) GPIO_ACTIVE_HIGH>,	/* thermal power */
+				<TEGRA_GPIO(R, 7) GPIO_ACTIVE_HIGH>,	/* cam power 2v85 en */
+				<TEGRA_GPIO(A, 2) GPIO_ACTIVE_HIGH>,	/* dap2 fs */
+				<TEGRA_GPIO(W, 4) GPIO_ACTIVE_HIGH>,	/* audio mclk */
+				<TEGRA_GPIO(BB, 6) GPIO_ACTIVE_HIGH>;	/* fm34 pwdn / baypass dsp */
+			output-low;
+		};
+	};
+
 	pinmux@70000868 {
 		state_default: pinmux {
 			lcd_pwr2_pc6 {
