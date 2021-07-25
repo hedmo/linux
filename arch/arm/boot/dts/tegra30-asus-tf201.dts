@@ -159,15 +159,7 @@
 		};
 	};
 
-	spi@7000da00 {
-		status = "okay";
-		spi-max-frequency = <25000000>;
-		spi-flash@1 {
-			compatible = "winbond,w25q32", "jedec,spi-nor";
-			reg = <1>;
-			spi-max-frequency = <20000000>;
-		};
-	};
+	/* spi-flash winbond,w25q32 on spi@7000da00 does not exist*/
 
 	usb-phy@7d000000 {
 		/delete-property/ nvidia,xcvr-setup-use-fuses;
