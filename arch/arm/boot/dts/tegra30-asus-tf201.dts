@@ -63,8 +63,8 @@
 	};
 
 	i2c@7000c000 {		/*i2c1*/
-		status = "okay";
-		clock-frequency = <100000>;
+
+		/* There is something on @50 address on tf201 */
 
 		/* Fortemedia FM34NE voice processor */
 		dsp@60 {
@@ -78,7 +78,14 @@
 		};
 	};
 
-	i2c@7000c400 {
+	i2c@7000c400 {		/*i2c2*/
+
+		/* There is something on @0 address on tf300t/tf700t */
+
+		/* There is something on @8 address on tf201/tf300t/tf700t */
+
+		/* There is something on @20 address on tf700t */
+
 		/* Atmel MXT768E touchscreen */
 		touchscreen@4d {
 			compatible = "atmel,maxtouch";
@@ -93,7 +100,7 @@
 		};
 	};
 
-	i2c@7000c500 {
+	i2c@7000c500 {		/*i2c3*/
 		clock-frequency = <100000>;
 
 		magnetometer@e {
@@ -141,7 +148,10 @@
 		};
 	};
 
-	i2c@7000d000 {
+	i2c@7000d000 {		/*i2c5*/
+
+		/* There is something on @c address on tf700t */
+
 		/* Realtek ALC5631 audio codec */
 		rt5631: audio-codec@1a {
 			compatible = "realtek,rt5631";
