@@ -13,11 +13,10 @@
 	gpio@6000d000 {
 		tf201-lpm-hog {
 			gpio-hog;
-			gpios = <TEGRA_GPIO(U, 3) GPIO_ACTIVE_HIGH>,	/* thermal power */
+			gpios = <TEGRA_GPIO(U, 3) GPIO_ACTIVE_HIGH>,	/* thermal power / used in pad battery driver */
 				<TEGRA_GPIO(R, 7) GPIO_ACTIVE_HIGH>,	/* cam power 2v85 en */
-				<TEGRA_GPIO(A, 2) GPIO_ACTIVE_HIGH>,	/* dap2 fs */
-				<TEGRA_GPIO(W, 4) GPIO_ACTIVE_HIGH>,	/* audio mclk */
-				<TEGRA_GPIO(BB, 6) GPIO_ACTIVE_HIGH>;	/* fm34 pwdn / baypass dsp */
+				<TEGRA_GPIO(A, 2) GPIO_ACTIVE_HIGH>,	/* dap2 fs / Set DAP2_FS to low in LP0 for voltage leaking / fm34 suspend */
+				<TEGRA_GPIO(W, 4) GPIO_ACTIVE_HIGH>;	/* audio mclk / Set AUDIO_MCLK to low in LP0 for voltage leaking / fm34 suspend */
 			output-low;
 		};
 	};
@@ -63,6 +62,22 @@
 		};
 	};
 
+	i2c@7000c000 {		/*i2c1*/
+		status = "okay";
+		clock-frequency = <100000>;
+
+		/* Fortemedia FM34NE voice processor */
+		dsp@60 {
+			compatible = "tf201,dsp", "fortemedia,fm34";
+			reg = <0x60>;
+
+			vddc-supply = <&vdd_1v8_dsp>;
+			vdda-supply = <&vdd_dsp_reg>;
+
+			reset-gpios = <&gpio TEGRA_GPIO(O, 3) GPIO_ACTIVE_LOW>;
+		};
+	};
+
 	i2c@7000c400 {
 		/* Atmel MXT768E touchscreen */
 		touchscreen@4d {
@@ -85,6 +100,29 @@
 			mount-matrix =  "-1",  "0",  "0",
 					 "0", "-1",  "0",
 					 "0",  "0", "-1";
+		};
+
+		/* Rear camera Fujitsu MBG048 image processor */
+		back_camera: camera-sensor@1f {
+			compatible = "fujitsu,m6mo";
+			reg = <0x1f>;
+
+			reset-gpios = <&gpio TEGRA_GPIO(BB, 0) GPIO_ACTIVE_LOW>; 	// cam_sensor_rst_lo, out, lo
+		};
+
+		/* Front camera Aptina MI1040 image processor */
+		front_camera: camera-sensor@48 {
+			compatible = "aptina,mi1040", "ovti,ov2710";
+			reg = <0x48>;
+
+			clocks = <&tegra_car TEGRA30_CLK_PLL_A>;
+			clock-names = "extclk";
+
+			reset-gpios = <&gpio TEGRA_GPIO(O, 0) GPIO_ACTIVE_LOW>;
+
+			DOVDD-supply = <&vddio_1v8_cam>;
+			DVDD-supply = <&vdd_2v85_cam2>;
+			// AVDD-supply = <&cam_vddc>;		/* Analog regulator line should be here */
 		};
 
 		gyroscope@68 {
@@ -194,6 +232,26 @@
 				};
 			};
 		};
+	};
+
+	vdd_1v8_dsp: regulator@11 {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd_1v8_dsp";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		gpio = <&gpio TEGRA_GPIO(P, 3) GPIO_ACTIVE_HIGH>;       // dsp_power_1v8_en, out, hi
+		enable-active-high;
+		vin-supply = <&vdd_1v8_vio>;
+	};
+
+	vdd_dsp_reg: regulator@12 {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd_dsp_power";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		gpio = <&gpio TEGRA_GPIO(BB, 6) GPIO_ACTIVE_HIGH>;       // fm34_pwdn, out, lo
+		enable-active-high;
+		vin-supply = <&vdd_3v3_sys>;
 	};
 
 	vibrator {
