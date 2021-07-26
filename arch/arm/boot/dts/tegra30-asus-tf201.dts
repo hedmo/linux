@@ -68,7 +68,7 @@
 
 		/* Fortemedia FM34NE voice processor */
 		dsp@60 {
-			compatible = "tf201,dsp", "fortemedia,fm34";
+			compatible = "tf201,dsp", "fortemedia,fm34";	/* exists on tf700t as well */
 			reg = <0x60>;
 
 			vddc-supply = <&vdd_1v8_dsp>;
