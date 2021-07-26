@@ -159,13 +159,7 @@
 			touchscreen-inverted-y;
 		};
 
-		gpio@20 {
-			compatible = "ti,tca6416";
-			reg = <0x20>;
-
-			gpio-controller;
-			#gpio-cells = <2>;
-		};
+		/* smth else ti,tca6416 is not probing*/
 	};
 
 	i2c@7000c500 {
