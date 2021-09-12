@@ -62,6 +62,17 @@
 		};
 	};
 
+	uartb: serial@70006040 {
+		compatible = "nvidia,tegra30-hsuart";
+		status = "okay";
+
+		/* Broadcom GPS BCM47511 */
+		gnss {
+			compatible = "gps,nmea";
+			vcc-supply = <&vdd_3v3_sys>;
+		};
+	};
+
 	i2c@7000c000 {		/*i2c1*/
 
 		/* There is something on @50 address on tf201 */
