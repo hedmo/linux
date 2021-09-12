@@ -148,6 +148,16 @@
 		};
 	};
 
+	hdmi_ddc: i2c@7000c700 {		/*i2c4*/
+		status = "okay";
+		clock-frequency = <93750>;
+
+		nvhdcp@3a {
+			compatible = "nvidia,hdcp";
+			reg = <0x3a>;
+		};
+	};
+
 	i2c@7000d000 {		/*i2c5*/
 
 		/* There is something on @c address on tf700t */
