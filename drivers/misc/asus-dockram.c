@@ -1,10 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * ASUS EC: DockRAM
- *
- * Written by: Michał Mirosław <mirq-linux@rere.qmqm.pl>
- *
- * Copyright (C) 2017 Michał Mirosław
  *
  */
 
@@ -275,65 +271,40 @@ static struct i2c_driver asus_dockram_driver = {
 	.probe_new = asus_dockram_probe,
 	.remove = asus_dockram_remove,
 };
+module_i2c_driver(asus_dockram_driver);
 
-static void devm_i2c_device_release(struct device *dev, void *res)
+static void devm_put_device(void *dev)
 {
-	struct i2c_client **pdev = res;
-	struct i2c_client *child = *pdev;
-
-	if (child)
-		put_device(&child->dev);
-}
-
-static struct i2c_client *devm_i2c_device_get_by_phandle(struct device *dev,
-							 const char *name,
-							 int index)
-{
-	struct device_node *np;
-	struct i2c_client **pdev;
-
-	pdev = devres_alloc(devm_i2c_device_release, sizeof(*pdev),
-			    GFP_KERNEL);
-	if (!pdev)
-		return ERR_PTR(-ENOMEM);
-
-	np = of_parse_phandle(dev_of_node(dev), name, index);
-	if (!np) {
-		devres_free(pdev);
-		dev_err(dev, "can't resolve phandle %s:%d\n", name, index);
-		return ERR_PTR(-ENODEV);
-	}
-
-	*pdev = of_find_i2c_device_by_node(np);
-	of_node_put(np);
-
-	if (!*pdev) {
-		devres_free(pdev);
-		return ERR_PTR(-EPROBE_DEFER);
-	}
-
-	devres_add(dev, pdev);
-	return *pdev;
+	put_device(dev);
 }
 
 struct i2c_client *devm_asus_dockram_get(struct device *parent)
 {
-	struct i2c_client *dockram =
-		devm_i2c_device_get_by_phandle(parent, "asus,dockram", 0);
+	struct i2c_client *dockram;
+	int err = 0;
 
+	dockram = of_get_i2c_device_by_phandle(parent, "asus,dockram", 0);
 	if (IS_ERR(dockram))
 		return dockram;
+
 	if (!dockram->dev.driver)
-		return ERR_PTR(-EPROBE_DEFER);
-	if (dockram->dev.driver != &asus_dockram_driver.driver)
-		return ERR_PTR(-EBUSY);
+		err = -EPROBE_DEFER;
+	else if (dockram->dev.driver != &asus_dockram_driver.driver)
+		err = -ENXIO;
+	else
+		err = devm_add_action(parent, devm_put_device, &dockram->dev);
+
+	if (err)
+		goto ret_release;
 
 	return dockram;
+
+ret_release:
+	put_device(&dockram->dev);
+	return ERR_PTR(err);
 }
 EXPORT_SYMBOL_GPL(devm_asus_dockram_get);
 
-module_i2c_driver(asus_dockram_driver);
-
 MODULE_AUTHOR("Michał Mirosław <mirq-linux@rere.qmqm.pl>");
-MODULE_DESCRIPTION("ASUS Transformer Pad's dockram driver");
+MODULE_DESCRIPTION("ASUS Transformer's dockram driver");
 MODULE_LICENSE("GPL");
