@@ -1,10 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * ASUS Transformer Pad - multimedia keys
- *
- * Written by: Michał Mirosław <mirq-linux@rere.qmqm.pl>
- *
- * Copyright (C) 2017 Michał Mirosław
  *
  */
 
@@ -280,5 +276,5 @@ static struct platform_driver asusec_keys_driver = {
 module_platform_driver(asusec_keys_driver);
 
 MODULE_AUTHOR("Michał Mirosław <mirq-linux@rere.qmqm.pl>");
-MODULE_DESCRIPTION("ASUS Transformer Pad multimedia keys driver");
+MODULE_DESCRIPTION("ASUS Transformer's multimedia keys driver");
 MODULE_LICENSE("GPL");

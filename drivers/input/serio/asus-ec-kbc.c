@@ -1,13 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * ASUS EC - keyboard and touchpad
  *
  * This looks suspiciously similar to i8042, but wrapped in
  * I2C/SMBus packets.
- *
- * Written by: Michał Mirosław <mirq-linux@rere.qmqm.pl>
- *
- * Copyright (C) 2017 Michał Mirosław
  *
  */
 
@@ -166,5 +162,5 @@ static struct platform_driver asusec_kbc_driver = {
 module_platform_driver(asusec_kbc_driver);
 
 MODULE_AUTHOR("Michał Mirosław <mirq-linux@rere.qmqm.pl>");
-MODULE_DESCRIPTION("ASUS Transformer Pad Dock keyboard+touchpad controller driver");
+MODULE_DESCRIPTION("ASUS Transformer's Dock keyboard and touchpad controller driver");
 MODULE_LICENSE("GPL");

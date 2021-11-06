@@ -1,11 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * ASUS EC driver
- *
- * Written by: Michał Mirosław <mirq-linux@rere.qmqm.pl>
- *
- * Copyright (C) 2017 Michał Mirosław
- * Copyright (C) 2021 Svyatoslav Ryhel
  *
  */
 
@@ -583,5 +578,6 @@ static struct i2c_driver asus_ec_driver = {
 module_i2c_driver(asus_ec_driver);
 
 MODULE_AUTHOR("Michał Mirosław <mirq-linux@rere.qmqm.pl>");
-MODULE_DESCRIPTION("ASUS Transformer Pad's EC driver");
+MODULE_AUTHOR("Svyatoslav Ryhel <clamor95@gmail.com>");
+MODULE_DESCRIPTION("ASUS Transformer's EC driver");
 MODULE_LICENSE("GPL");

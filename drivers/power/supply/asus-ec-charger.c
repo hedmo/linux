@@ -1,10 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * ASUS EC driver - charging monitoring
- *
- * Written by: Svyatoslav Ryhel <clamor95@gmail.com>
- *
- * Copyright (C) 2021 Svyatoslav Ryhel
  *
  */
 
@@ -217,5 +213,5 @@ static struct platform_driver asusec_charger_driver = {
 module_platform_driver(asusec_charger_driver);
 
 MODULE_AUTHOR("Svyatoslav Ryhel <clamor95@gmail.com>");
-MODULE_DESCRIPTION("ASUS Transformer Pad charger driver");
+MODULE_DESCRIPTION("ASUS Transformer's charger driver");
 MODULE_LICENSE("GPL");

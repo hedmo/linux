@@ -1,10 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * ASUS EC driver - battery LED
- *
- * Written by: Michał Mirosław <mirq-linux@rere.qmqm.pl>
- *
- * Copyright (C) 2017 Michał Mirosław
  *
  */
 
