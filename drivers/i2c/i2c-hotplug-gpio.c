@@ -1,8 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * I2C multiplexer using GPIO API
- *
- * Peter Korsgaard <peter.korsgaard@barco.com>
+ * I2C hotplug gate controlled by GPIO
  *
  */
 
@@ -17,14 +15,16 @@
 struct i2c_hotplug_priv {
 	struct i2c_adapter	 adap;
 	struct i2c_adapter	*parent;
-	struct device		*adap_dev;
+	struct device		*dev;
 	struct gpio_desc	*gpio;
 	int			 irq;
 };
 
 static inline struct i2c_adapter *i2c_hotplug_parent(struct i2c_adapter *adap)
 {
-	return container_of(adap, struct i2c_hotplug_priv, adap)->parent;
+	struct i2c_hotplug_priv *priv = container_of(adap, struct i2c_hotplug_priv, adap);
+
+	return priv->parent;
 }
 
 static int i2c_hotplug_master_xfer(struct i2c_adapter *adap,
@@ -119,8 +119,8 @@ static int i2c_hotplug_activate(struct i2c_hotplug_priv *priv)
 	 * Store the dev data in adapter dev, since
 	 * previous i2c_del_adapter might have wiped it.
 	 */
-	priv->adap.dev.parent = priv->adap_dev;
-	priv->adap.dev.of_node = priv->adap_dev->of_node;
+	priv->adap.dev.parent = priv->dev;
+	priv->adap.dev.of_node = priv->dev->of_node;
 
 	dev_dbg(priv->adap.dev.parent, "connection detected");
 
@@ -157,9 +157,14 @@ static irqreturn_t i2c_hotplug_interrupt(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static void devm_i2c_put_adapter(void *adapter)
+{
+	i2c_put_adapter(adapter);
+}
+
 static int i2c_hotplug_gpio_probe(struct platform_device *pdev)
 {
-	struct device_node *parent_np;
+	struct i2c_adapter *parent;
 	struct i2c_hotplug_priv *priv;
 	bool is_i2c, is_smbus;
 	int err;
@@ -167,67 +172,59 @@ static int i2c_hotplug_gpio_probe(struct platform_device *pdev)
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
+
 	platform_set_drvdata(pdev, priv);
+	priv->dev = &pdev->dev;
 
-	parent_np = of_parse_phandle(pdev->dev.of_node, "i2c-parent", 0);
-	if (!parent_np) {
-		dev_err(&pdev->dev, "Cannot parse i2c-parent\n");
-		return -ENODEV;
-	}
+	parent = of_get_i2c_adapter_by_phandle(&pdev->dev, "i2c-parent", 0);
+	if (IS_ERR(parent))
+		return dev_err_probe(&pdev->dev, PTR_ERR(parent),
+				     "Can't get parent I2C adapter\n");
 
-	priv->parent = of_find_i2c_adapter_by_node(parent_np);
-	of_node_put(parent_np);
-	if (!priv->parent)
-		return -ENODEV;
+	priv->parent = parent;
+
+	err = devm_add_action_or_reset(&pdev->dev, devm_i2c_put_adapter,
+				       parent);
+	if (err)
+		return err;
 
 	priv->gpio = devm_gpiod_get(&pdev->dev, "detect", GPIOD_IN);
-	if (IS_ERR(priv->gpio)) {
-		dev_err_probe(&pdev->dev, PTR_ERR(priv->gpio),
-			      "Cannot get detect-gpio\n");
-		goto err_parent;
-	}
+	if (IS_ERR(priv->gpio))
+		return dev_err_probe(&pdev->dev, PTR_ERR(priv->gpio),
+			"Cannot get detect-gpio\n");
 
-	is_i2c = priv->parent->algo->master_xfer;
-	is_smbus = priv->parent->algo->smbus_xfer;
+	is_i2c = parent->algo->master_xfer;
+	is_smbus = parent->algo->smbus_xfer;
 
 	snprintf(priv->adap.name, sizeof(priv->adap.name),
-		 "i2c-hotplug (master i2c-%d)", i2c_adapter_id(priv->parent));
+		 "i2c-hotplug (master i2c-%d)", i2c_adapter_id(parent));
 	priv->adap.owner = THIS_MODULE;
 	priv->adap.algo = i2c_hotplug_algo[is_i2c][is_smbus];
 	priv->adap.algo_data = NULL;
 	priv->adap.lock_ops = &i2c_hotplug_lock_ops;
-	priv->adap_dev = &pdev->dev;
-	priv->adap.class = priv->parent->class;
-	priv->adap.retries = priv->parent->retries;
-	priv->adap.timeout = priv->parent->timeout;
-	priv->adap.quirks = priv->parent->quirks;
-	if (priv->parent->bus_recovery_info)
+	priv->adap.class = parent->class;
+	priv->adap.retries = parent->retries;
+	priv->adap.timeout = parent->timeout;
+	priv->adap.quirks = parent->quirks;
+	if (parent->bus_recovery_info)
 		priv->adap.bus_recovery_info = &i2c_hotplug_recovery_info;
 
-	if (!priv->adap.algo) {
-		err = -EINVAL;
-		goto err_parent;
-	}
+	if (!priv->adap.algo)
+		return -EINVAL;
 
-	err = platform_get_irq(pdev, 0);
-	if (err < 0)
-		goto err_parent;
-
-	priv->irq = err;
+	priv->irq = platform_get_irq(pdev, 0);
+	if (priv->irq < 0)
+		return dev_err_probe(&pdev->dev, priv->irq, "Cannot find IRQ\n");
 
 	err = request_threaded_irq(priv->irq, NULL, i2c_hotplug_interrupt,
 				   IRQF_ONESHOT | IRQF_SHARED,
 				   "i2c-hotplug", priv);
 	if (err)
-		goto err_parent;
+		return err;
 
 	irq_wake_thread(priv->irq, priv);
 
 	return 0;
-
-err_parent:
-	i2c_put_adapter(priv->parent);
-	return err;
 }
 
 static int i2c_hotplug_gpio_remove(struct platform_device *pdev)
@@ -236,7 +233,6 @@ static int i2c_hotplug_gpio_remove(struct platform_device *pdev)
 
 	free_irq(priv->irq, priv);
 	i2c_hotplug_deactivate(priv);
-	i2c_put_adapter(priv->parent);
 
 	return 0;
 }
