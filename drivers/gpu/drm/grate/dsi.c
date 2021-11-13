@@ -52,9 +52,15 @@ to_dsi_state(struct drm_connector_state *state)
 	return container_of(state, struct tegra_dsi_state, base);
 }
 
+enum controller_vs {
+	DSI_VS_0,
+	DSI_VS_1,
+};
+
 struct tegra_dsi {
 	struct host1x_client client;
 	struct tegra_output output;
+	enum controller_vs controller_vs;
 	struct device *dev;
 
 	void __iomem *regs;
@@ -661,7 +667,12 @@ static int tegra_dsi_pad_enable(struct tegra_dsi *dsi)
 {
 	u32 value;
 
-	value = DSI_PAD_CONTROL_VS1_PULLDN(0) | DSI_PAD_CONTROL_VS1_PDIO(0);
+	if (dsi->controller_vs == DSI_VS_1)
+		value = DSI_PAD_CONTROL_VS1_PULLDN(0) |
+			DSI_PAD_CONTROL_VS1_PDIO(0);
+	else
+		value = DSI_PAD_CONTROL_PULLDN(0) | DSI_PAD_CONTROL_PDIO(0);
+
 	tegra_dsi_writel(dsi, value, DSI_PAD_CONTROL_0);
 
 	return 0;
@@ -672,33 +683,48 @@ static int tegra_dsi_pad_calibrate(struct tegra_dsi *dsi)
 	u32 value;
 	int err;
 
-	/*
-	 * XXX Is this still needed? The module reset is deasserted right
-	 * before this function is called.
-	 */
-	tegra_dsi_writel(dsi, 0, DSI_PAD_CONTROL_0);
-	tegra_dsi_writel(dsi, 0, DSI_PAD_CONTROL_1);
-	tegra_dsi_writel(dsi, 0, DSI_PAD_CONTROL_2);
-	tegra_dsi_writel(dsi, 0, DSI_PAD_CONTROL_3);
-	tegra_dsi_writel(dsi, 0, DSI_PAD_CONTROL_4);
+	if (dsi->controller_vs == DSI_VS_1) {
+		/*
+		 * XXX Is this still needed? The module reset is deasserted right
+		 * before this function is called.
+		 */
+		tegra_dsi_writel(dsi, 0, DSI_PAD_CONTROL_0);
+		tegra_dsi_writel(dsi, 0, DSI_PAD_CONTROL_1);
+		tegra_dsi_writel(dsi, 0, DSI_PAD_CONTROL_2);
+		tegra_dsi_writel(dsi, 0, DSI_PAD_CONTROL_3);
+		tegra_dsi_writel(dsi, 0, DSI_PAD_CONTROL_4);
+	}
 
 	/* start calibration */
 	tegra_dsi_pad_enable(dsi);
 
-	value = DSI_PAD_SLEW_UP(0x7) | DSI_PAD_SLEW_DN(0x7) |
-		DSI_PAD_LP_UP(0x1) | DSI_PAD_LP_DN(0x1) |
-		DSI_PAD_OUT_CLK(0x0);
-	tegra_dsi_writel(dsi, value, DSI_PAD_CONTROL_2);
+	if (dsi->controller_vs == DSI_VS_1) {
+		value = DSI_PAD_SLEW_UP(0x7) | DSI_PAD_SLEW_DN(0x7) |
+			DSI_PAD_LP_UP(0x1) | DSI_PAD_LP_DN(0x1) |
+			DSI_PAD_OUT_CLK(0x0);
+		tegra_dsi_writel(dsi, value, DSI_PAD_CONTROL_2);
 
-	value = DSI_PAD_PREEMP_PD_CLK(0x3) | DSI_PAD_PREEMP_PU_CLK(0x3) |
-		DSI_PAD_PREEMP_PD(0x03) | DSI_PAD_PREEMP_PU(0x3);
-	tegra_dsi_writel(dsi, value, DSI_PAD_CONTROL_3);
+		value = DSI_PAD_PREEMP_PD_CLK(0x3) |
+			DSI_PAD_PREEMP_PU_CLK(0x3) | DSI_PAD_PREEMP_PD(0x03) |
+			DSI_PAD_PREEMP_PU(0x3);
+		tegra_dsi_writel(dsi, value, DSI_PAD_CONTROL_3);
 
-	err = tegra_mipi_start_calibration(dsi->mipi);
-	if (err < 0)
-		return err;
+		err = tegra_mipi_start_calibration(dsi->mipi);
+		if (err < 0)
+			return err;
 
-	return tegra_mipi_finish_calibration(dsi->mipi);
+		return tegra_mipi_finish_calibration(dsi->mipi);
+	} else {
+		value = DSI_PAD_CONTROL_SLEW_UP(0x6) |
+			DSI_PAD_CONTROL_SLEW_DN(0x6) |
+			DSI_PAD_CONTROL_PREEMP_EN(0x1) |
+			DSI_PAD_CONTROL_LP_UP(0x1) |
+			DSI_PAD_CONTROL_LP_DN(0x1);
+
+			tegra_dsi_writel(dsi, value, DSI_PAD_CONTROL_0);
+	}
+
+	return 1;
 }
 
 static void tegra_dsi_set_timeout(struct tegra_dsi *dsi, unsigned long bclk,
@@ -828,10 +854,13 @@ static void tegra_dsi_unprepare(struct tegra_dsi *dsi)
 	if (dsi->slave)
 		tegra_dsi_unprepare(dsi->slave);
 
-	err = tegra_mipi_disable(dsi->mipi);
-	if (err < 0)
-		dev_err(dsi->dev, "failed to disable MIPI calibration: %d\n",
-			err);
+	if (dsi->controller_vs == DSI_VS_1) {
+		err = tegra_mipi_disable(dsi->mipi);
+		if (err < 0)
+			dev_err(dsi->dev,
+				"failed to disable MIPI calibration: %d\n",
+				err);
+	}
 
 	err = host1x_client_suspend(&dsi->client);
 	if (err < 0)
@@ -887,10 +916,12 @@ static int tegra_dsi_prepare(struct tegra_dsi *dsi)
 		return err;
 	}
 
-	err = tegra_mipi_enable(dsi->mipi);
-	if (err < 0)
-		dev_err(dsi->dev, "failed to enable MIPI calibration: %d\n",
-			err);
+	if (dsi->controller_vs == DSI_VS_1) {
+		err = tegra_mipi_enable(dsi->mipi);
+		if (err < 0)
+			dev_err(dsi->dev,
+				"failed to enable MIPI calibration: %d\n", err);
+	}
 
 	err = tegra_dsi_pad_calibrate(dsi);
 	if (err < 0)
@@ -1562,6 +1593,7 @@ static int tegra_dsi_probe(struct platform_device *pdev)
 	dsi->output.dev = dsi->dev = &pdev->dev;
 	dsi->video_fifo_depth = 1920;
 	dsi->host_fifo_depth = 64;
+	dsi->controller_vs = (enum controller_vs)of_device_get_match_data(&pdev->dev);
 
 	err = tegra_dsi_ganged_probe(dsi);
 	if (err < 0)
@@ -1594,7 +1626,7 @@ static int tegra_dsi_probe(struct platform_device *pdev)
 		return PTR_ERR(dsi->clk);
 	}
 
-	dsi->clk_lp = devm_clk_get(&pdev->dev, "lp");
+	dsi->clk_lp = devm_clk_get_optional(&pdev->dev, "lp");
 	if (IS_ERR(dsi->clk_lp)) {
 		dev_err(&pdev->dev, "cannot get low-power clock\n");
 		return PTR_ERR(dsi->clk_lp);
@@ -1623,9 +1655,11 @@ static int tegra_dsi_probe(struct platform_device *pdev)
 	if (IS_ERR(dsi->regs))
 		return PTR_ERR(dsi->regs);
 
-	dsi->mipi = tegra_mipi_request(&pdev->dev, pdev->dev.of_node);
-	if (IS_ERR(dsi->mipi))
-		return PTR_ERR(dsi->mipi);
+	if (dsi->controller_vs == DSI_VS_1) {
+		dsi->mipi = tegra_mipi_request(&pdev->dev, pdev->dev.of_node);
+		if (IS_ERR(dsi->mipi))
+			return PTR_ERR(dsi->mipi);
+	}
 
 	dsi->host.ops = &tegra_dsi_host_ops;
 	dsi->host.dev = &pdev->dev;
@@ -1655,7 +1689,8 @@ static int tegra_dsi_probe(struct platform_device *pdev)
 unregister:
 	mipi_dsi_host_unregister(&dsi->host);
 mipi_free:
-	tegra_mipi_free(dsi->mipi);
+	if (dsi->controller_vs == DSI_VS_1)
+		tegra_mipi_free(dsi->mipi);
 	return err;
 }
 
@@ -1676,17 +1711,19 @@ static int tegra_dsi_remove(struct platform_device *pdev)
 	tegra_output_remove(&dsi->output);
 
 	mipi_dsi_host_unregister(&dsi->host);
-	tegra_mipi_free(dsi->mipi);
+
+	if (dsi->controller_vs == DSI_VS_1)
+		tegra_mipi_free(dsi->mipi);
 
 	return 0;
 }
 
 static const struct of_device_id tegra_dsi_of_match[] = {
-	{ .compatible = "nvidia,tegra210-dsi", },
-	{ .compatible = "nvidia,tegra132-dsi", },
-	{ .compatible = "nvidia,tegra124-dsi", },
-	{ .compatible = "nvidia,tegra114-dsi", },
-	{ .compatible = "nvidia,tegra30-dsi", },
+	{ .compatible = "nvidia,tegra210-dsi", .data = (void *)DSI_VS_1, },
+	{ .compatible = "nvidia,tegra132-dsi", .data = (void *)DSI_VS_1, },
+	{ .compatible = "nvidia,tegra124-dsi", .data = (void *)DSI_VS_1, },
+	{ .compatible = "nvidia,tegra114-dsi", .data = (void *)DSI_VS_1, },
+	{ .compatible = "nvidia,tegra30-dsi", .data = (void *)DSI_VS_0, },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, tegra_dsi_of_match);
