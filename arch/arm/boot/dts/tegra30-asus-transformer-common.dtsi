@@ -1446,6 +1446,7 @@
 		vin-supply = <&vdd_5v0_sys>;
 	};
 
+	/* This regulators should be restored in dts once camera is available */
 	vdd_2v85_cam2: regulator@9 {
 		compatible = "regulator-fixed";
 		regulator-name = "cam3_ldo_en";
