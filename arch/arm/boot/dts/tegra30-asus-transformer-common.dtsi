@@ -1456,6 +1456,10 @@
 		};
 	};
 
+	cec@70015000 {
+		status = "okay";
+	};
+
 	hda@70030000 {
 		status = "okay";
 	};
