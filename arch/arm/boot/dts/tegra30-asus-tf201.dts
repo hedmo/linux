@@ -66,10 +66,27 @@
 		compatible = "nvidia,tegra30-hsuart";
 		status = "okay";
 
+
+		nvidia,adjust-baud-rates = <0 9600 100>,
+					   <9600 115200 200>,
+					   <1000000 4000000 136>;
+
 		/* Broadcom GPS BCM47511 */
 		gnss {
-			compatible = "gps,nmea";
-			vcc-supply = <&vdd_3v3_sys>;
+			compatible = "brcm,bcm47511-gps";
+			// current-speed = <>;
+
+			clocks = <&tegra_pmc TEGRA_PMC_CLK_BLINK>;
+			clock-names = "txco";
+
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(U, 5) IRQ_TYPE_LEVEL_HIGH>;
+
+			enable-gpios = <&gpio TEGRA_GPIO(U, 2) GPIO_ACTIVE_HIGH>;
+			reset-gpios = <&gpio TEGRA_GPIO(U, 3) GPIO_ACTIVE_LOW>;
+
+			vcc-supply  = <&vdd_3v3_com>;
+			vio-supply = <&vdd_1v8_vio>;
 		};
 	};
 
