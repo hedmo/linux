@@ -57,11 +57,6 @@
 			record-size = <0x400>;		/*  1kB */
 			ecc-size = <16>;
 		};
-
-		trustzone@bfe00000 {
-			reg = <0xbfe00000 0x200000>;	/* 2MB */
-			no-map;
-		};
 	};
 
 	host1x@50000000 {
@@ -1580,14 +1575,6 @@
 			debounce-interval = <10>;
 			wakeup-event-action = <EV_ACT_ASSERTED>;
 			wakeup-source;
-		};
-	};
-
-	firmware {
-		trusted-foundations {
-			compatible = "tlm,trusted-foundations";
-			tlm,version-major = <2>;
-			tlm,version-minor = <8>;
 		};
 	};
 
