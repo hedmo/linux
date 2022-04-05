@@ -221,6 +221,8 @@ static int hv101hd1_probe(struct mipi_dsi_device *dsi)
 		return ret;
 	}
 
+	dev_info(dev, "DSI panel probed successfuly\n");
+
 	return 0;
 }
 
