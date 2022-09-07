@@ -2672,7 +2672,9 @@
 	};
 
 	display-panel {
-		compatible = "panel-lvds";
+		compatible = "hannstar,hsd101pww1", "panel-lvds";
+
+		/* HANNSTAR HSD101PWW2 using custom timings */
 
 		width-mm = <217>;
 		height-mm = <136>;
@@ -2695,7 +2697,6 @@
 
 	extcon-keys {
 		compatible = "gpio-keys";
-		interrupt-parent = <&gpio>;
 
 		switch-dock-insert {
 			label = "Chagall Dock";
@@ -2728,7 +2729,6 @@
 
 	gpio-keys {
 		compatible = "gpio-keys";
-		interrupt-parent = <&gpio>;
 
 		key-power {
 			label = "Power";
