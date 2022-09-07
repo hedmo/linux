@@ -54,7 +54,30 @@ properties:
         - SPORP
         - SPORN
 
+  clocks:
+    minItems: 3
+
+  clock-names:
+    items:
+      - const: pll_a
+      - const: pll_a_out0
+      - const: mclk
+
+  assigned-clocks:
+    minItems: 1
+    maxItems: 3
+
+  assigned-clock-parents:
+    minItems: 1
+    maxItems: 3
+
+  assigned-clock-rates:
+    minItems: 1
+    maxItems: 3
+
 required:
+  - clocks
+  - clock-names
   - nvidia,i2s-controller
 
 unevaluatedProperties: false
@@ -77,7 +100,7 @@ examples:
         nvidia,i2s-controller = <&tegra_i2s1>;
         nvidia,audio-codec = <&rt5640>;
 
-        nvidia,hp-det-gpios = <&gpio 143 0>;
+        nvidia,hp-det-gpios = <&gpio 143 1>;
 
         clocks = <&clk 216>, <&clk 217>, <&clk 120>;
         clock-names = "pll_a", "pll_a_out0", "mclk";

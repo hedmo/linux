@@ -38,6 +38,7 @@ properties:
         - "Headphone Jack"
         - "Int Spk"
         - "Mic Jack"
+        - "Headset Mic"
         - "Int Mic"
 
         # CODEC Pins
@@ -58,13 +59,38 @@ properties:
         - RON
         - MICBIAS
 
+  clocks:
+    minItems: 3
+
+  clock-names:
+    items:
+      - const: pll_a
+      - const: pll_a_out0
+      - const: mclk
+
+  assigned-clocks:
+    minItems: 1
+    maxItems: 3
+
+  assigned-clock-parents:
+    minItems: 1
+    maxItems: 3
+
+  assigned-clock-rates:
+    minItems: 1
+    maxItems: 3
+
 required:
+  - clocks
+  - clock-names
   - nvidia,i2s-controller
 
 unevaluatedProperties: false
 
 examples:
   - |
+    #include <dt-bindings/clock/tegra20-car.h>
+
     sound {
         compatible = "nvidia,tegra-audio-wm8903-harmony",
                      "nvidia,tegra-audio-wm8903";
@@ -88,6 +114,8 @@ examples:
         nvidia,int-mic-en-gpios = <&gpio 184 0>;
         nvidia,ext-mic-en-gpios = <&gpio 185 0>;
 
-        clocks = <&clk 112>, <&clk 113>, <&clk 93>;
+        clocks = <&tegra_car TEGRA20_CLK_PLL_A>,
+                 <&tegra_car TEGRA20_CLK_PLL_A_OUT0>,
+                 <&tegra_car TEGRA20_CLK_CDEV1>;
         clock-names = "pll_a", "pll_a_out0", "mclk";
     };
