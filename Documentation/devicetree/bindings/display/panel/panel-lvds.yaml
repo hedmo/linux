@@ -41,6 +41,7 @@ properties:
       - enum:
           - auo,b101ew05
           - tbs,a711-panel
+          - hannstar,hsd101pww1
 
       - const: panel-lvds
 
