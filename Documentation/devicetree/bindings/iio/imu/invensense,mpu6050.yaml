@@ -63,6 +63,7 @@ allOf:
                 - invensense,mpu9150
                 - invensense,mpu9250
                 - invensense,mpu9255
+                - invensense,mpu6050
     then:
       properties:
         i2c-gate: false
