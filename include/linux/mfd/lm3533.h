@@ -23,6 +23,8 @@ struct lm3533 {
 
 	struct regmap *regmap;
 
+	struct gpio_desc *enable_gpio;
+
 	int gpio_hwen;
 	int irq;
 
