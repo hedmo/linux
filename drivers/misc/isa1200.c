@@ -168,7 +168,7 @@ static const struct regmap_config isa1200_regmap_config = {
 	.max_register = 0x3d,
 };
 
-void isa1200_start(struct isa1200 *isa)
+static void isa1200_start(struct isa1200 *isa)
 {
 	const struct isa1200_config *cfg = isa->conf;
 	u8 hctrl0;
@@ -222,12 +222,21 @@ void isa1200_start(struct isa1200 *isa)
 	 * "Duty 0x64 == nForce 90", and no force feedback happens
 	 * unless we do this.
 	 */
-	regmap_write(isa->map, ISA1200_HCTRL5, 0x64);
+	if (!cfg->pwm_in)
+		regmap_write(isa->map, ISA1200_HCTRL5, 0x64);
 }
 
-void isa1200_stop(struct isa1200 *isa)
+static void isa1200_stop(struct isa1200 *isa)
 {
-	regmap_write(isa->map, ISA1200_HCTRL0, 0);
+	const struct isa1200_config *cfg = isa->conf;
+	u8 hctrl0;
+
+	if (!cfg->pwm_in)
+		hctrl0 = 0;
+	else
+		hctrl0 = ISA1200_HCTRL0_PWM_INPUT_MODE;
+
+	regmap_write(isa->map, ISA1200_HCTRL0, hctrl0);
 	gpiod_set_value(isa->len, 0);
 	gpiod_set_value(isa->hen, 0);
 	clk_disable_unprepare(isa->clk);
@@ -304,34 +313,34 @@ static int isa1200_probe(struct i2c_client *client)
 	 * and the device tree bindings support feeding the chip with a
 	 * PWM instead. If you need this and can test it, implement it.
 	 */
-	isa->clk = devm_clk_get(dev, NULL);
-	if (IS_ERR(isa->clk)) {
-		ret = PTR_ERR(isa->clk);
-		return dev_err_probe(dev, ret, "failed to get clock\n");
-	}
+	isa->clk = devm_clk_get_optional(dev, NULL);
+	if (IS_ERR(isa->clk))
+		return dev_err_probe(dev, PTR_ERR(isa->clk), "failed to get clock\n");
 
 	isa->map = devm_regmap_init_i2c(client, &isa1200_regmap_config);
-	if (IS_ERR(isa->map)) {
-		ret = PTR_ERR(isa->map);
-		return dev_err_probe(dev, ret, "failed to initialize register map\n");
-	}
+	if (IS_ERR(isa->map))
+		return dev_err_probe(dev, PTR_ERR(isa->map), "failed to initialize register map\n");
+
+	isa->hen = devm_gpiod_get_optional(dev, "hen", GPIOD_OUT_LOW);
+	if (IS_ERR(isa->hen))
+		return dev_err_probe(dev, PTR_ERR(isa->hen), "failed to get HEN GPIO\n");
+
+	isa->len = devm_gpiod_get_optional(dev, "len", GPIOD_OUT_LOW);
+	if (IS_ERR(isa->len))
+		return dev_err_probe(dev, PTR_ERR(isa->len), "failed to get LEN GPIO\n");
+
+	/* Set up initial hardware */
+	clk_prepare_enable(isa->clk);
+	gpiod_set_value(isa->hen, 1);
+	gpiod_set_value(isa->len, 1);
+
+	udelay(200);
 
 	/* Read a register so we know that regmap and I2C transport works */
 	ret = regmap_read(isa->map, ISA1200_SCTRL, &val);
 	if (ret) {
 		dev_info(dev, "failed to read SCTRL: %d\n", ret);
 		return ret;
-	}
-
-	isa->hen = devm_gpiod_get(dev, "hen", GPIOD_OUT_LOW);
-	if (IS_ERR(isa->hen)) {
-		ret = PTR_ERR(isa->map);
-		return dev_err_probe(dev, ret, "failed to get HEN GPIO\n");
-	}
-	isa->len = devm_gpiod_get(dev, "len", GPIOD_OUT_LOW);
-	if (IS_ERR(isa->hen)) {
-		ret = PTR_ERR(isa->map);
-		return dev_err_probe(dev, ret, "failed to get LEN GPIO\n");
 	}
 
 	INIT_WORK(&isa->play_work, isa1200_play_work);
@@ -401,6 +410,17 @@ static const struct isa1200_config isa1200_gavini = {
 	.period = 0x8c,
 };
 
+/* Configuration for P880/P895, LG Optimus 4X HD/Vu */
+static const struct isa1200_config isa1200_x3 = {
+	.ldo_voltage = ISA1200_LDO_VOLTAGE_23V,
+	.pwm_in = true,
+	.clkdiv = ISA1200_HCTRL0_DIV_512,
+	.plldiv = 1,
+	.freq = 0x93, /* 20 KHz */
+	.duty = 0,
+	.period = 0,
+};
+
 static const struct of_device_id isa1200_of_match[] = {
 	{
 		.compatible = "immersion,isa1200-janice",
@@ -409,6 +429,10 @@ static const struct of_device_id isa1200_of_match[] = {
 	{
 		.compatible = "immersion,isa1200-gavini",
 		.data = &isa1200_gavini,
+	},
+	{
+		.compatible = "immersion,isa1200-x3",
+		.data = &isa1200_x3,
 	},
 	{ }
 };
