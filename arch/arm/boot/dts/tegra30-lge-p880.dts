@@ -91,3 +91,9 @@
 		/delete-property/ reg-shift;
 		status = "okay";
 	};
+
+	uartc: serial@70006200 {
+		compatible = "nvidia,tegra30-hsuart";
+		/delete-property/ reg-shift;
+		status = "okay";
+	};
