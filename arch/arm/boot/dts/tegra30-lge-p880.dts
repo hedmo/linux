@@ -92,8 +92,14 @@
 		status = "okay";
 	};
 
-	uartc: serial@70006200 {
+	uartd: serial@70006300 {
 		compatible = "nvidia,tegra30-hsuart";
 		/delete-property/ reg-shift;
+		status = "okay";
+
+		/* Console */
+	};
+
+	pwm@7000a000 {
 		status = "okay";
 	};
