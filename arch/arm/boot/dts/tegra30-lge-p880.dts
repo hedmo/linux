@@ -26,7 +26,7 @@
 		rtc0 = &pmic;
 		rtc1 = "/rtc@7000e000";
 
-		display0 = &lcd;
+//		display0 = &lcd;
 //		display1 = &hdmi;
 
 		serial0 = &uartd; /* Console */
@@ -299,7 +299,7 @@
 		status = "okay";
 	};
 
-	sdmmc3: sdhci@78000400  {
+	sdmmc3: mmc@78000400  {
 		status = "okay";
 		bus-width = <4>;
 
@@ -366,5 +366,23 @@
 			operating-points-v2 = <&cpu0_opp_table>;
 			#cooling-cells = <2>;
 		};
+	};
+	vdd_5v0_vbus: regulator-vbus {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd_vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	vdd_3v3_vbat: regulator-vbat {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd_vbat";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+		vin-supply = <&vdd_5v0_vbus>;
 	};
 };
